@@ -1,0 +1,67 @@
+AVANCES - Newproject (AdventureWorks2025) - 29/10/2026
+
+PREGUNTA
+Pronosticar ingresos mensuales (SUM LineTotal) por canal (online / reseller)
+a 6 y 12 meses. Baselines: naive y naive estacional. Métricas: MAE, RMSE, MAPE.
+Validación: origen móvil (TimeSeriesSplit), no un único corte.
+
+HECHO
+- Consulta SQL mensual por canal validada con los valores de control de
+  junio 2022 (reseller 1,538,408.31; online 462,870.65).
+- 01_data_extraction.py corregido: cnn=None antes del try, ruta data/raw,
+  raise en el except, validate_extraction, type hints.
+- "reseller" se deja como etiqueta de OnlineOrderFlag = 0 (base ficticia).
+- Guía de Git en PDF en el escritorio (guia_git.pdf).
+
+HALLAZGOS DE LOS DATOS
+- Rango: 2022-05 a 2025-06. Mayo 2022 incompleto (desde el día 30).
+  Junio 2025 incompleto/anómalo (online ~47k, datos hasta el día 29).
+- Reseller: sin datos desde 2025-05. Solo 1-2 días activos por mes.
+- Online: tendencia creciente y cambio de régimen en 6-7/2024
+  (pedidos de ~340 a ~1,600-2,200; ticket medio baja).
+- Periodos de modelado: reseller 6-2022 a 4-2025 (35 meses);
+  online 6-2022 a 5-2025 (36 meses).
+- Recorte de meses incompletos: en el preprocesamiento, con constantes.
+
+PENDIENTE EN EL SCRIPT
+- Renombrar extract_revenue_features a extract_monthly_revenue.
+- Decidir nombre del CSV: raw_revenue_features.csv vs monthly_revenue.csv
+  (las notas dicen el segundo; actualizar NOTAS_PROYECTO.md).
+- Ejecutar python 01_data_extraction.py y comprobar "Validation passed"
+  y el conteo de filas (~71).
+- Quitar el print duplicado en el except (ya se relanza con raise).
+- Si el script pasa a src/, cambiar la ruta a parents[1].
+- Crear estructura de carpetas, .gitignore, git init y repo en GitHub.
+
+DECISIONES ABIERTAS
+- Estrategia multi-horizonte: recursiva vs directa.
+- Modelos: estadísticos (statsmodels, preguntar antes de instalar) vs ML con lags.
+- Quiebre del canal online: log o entrenar solo con el régimen reciente.
+- Incluir units y customers como variables (sugerido: sí).
+
+EDA (02_eda.ipynb) HECHO
+- Calidad de datos, recorte de periodos, serie por canal, pedidos x ticket medio,
+  estacionalidad, ACF, log del online, baselines (naive, snaive, drift) con
+  muestra común y h = 1, 6, 12, conclusiones actualizadas.
+
+EDA ADICIONAL (sesion 29/10)
+- Instalado statsmodels (0.15.0) en .venv y anadido a requirements.txt.
+- Notebook: seccion 5b (ACF/PACF con bandas +-0.34) y 5c (boxplot trimestral
+  y ticket medio del reseller). Ejecutado completo sin errores.
+- Reseller: estacionalidad TRIMESTRAL, no anual. ACF lag 1 = 0.38 y lag 3 = 0.51
+  significativos; lag 12 = 0.25 no pasa la banda (el 0.80 previo era artefacto).
+  PACF: solo lag 3 = 0.48. Promedios: T2 2.60M, T3 2.43M, T1 2.13M, T4 2.01M.
+  Pedidos (104-115) y ticket (~20-23k) casi no varian entre trimestres.
+- Online: ACF de diff(log) alterna signo (-0.40, 0.50, -0.43): domina el quiebre
+  de 6-2024. Modelar con indicador de regimen; no confiar en esa ACF.
+
+DECISION
+- Se descarta la carpeta src/; el código queda en notebooks y 01_data_extraction.py.
+
+SIGUIENTE (retomar aqui)
+1. Corregir la seccion 8 del notebook (dice "ACF lag 12 = 0.80, estacionalidad
+   anual clara"; debe decir trimestral, lag 3).
+2. Comprobar efecto calendario del reseller (dia del mes en que cae el lote).
+3. Preprocesamiento, features (lags 1, 3, 12 reseller), validacion con origen
+   movil (h=6 y 12), modelado.
+4. Decidir estrategia multi-horizonte (recursiva, directa o ambas).

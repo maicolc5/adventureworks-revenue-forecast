@@ -1,6 +1,6 @@
 # Notas del proyecto: Pronóstico de ingresos (AdventureWorks2025)
 
-Última actualización: 16/10/2026. Estado: definiendo la consulta SQL de extracción.
+Última actualización: 29/10/2026. Estado: EDA casi cerrado (falta corregir sección 8 y revisar efecto calendario del reseller).
 
 ## Pregunta de investigación
 ¿Cuáles serán los ingresos mensuales (suma de `LineTotal`) por canal de venta en los próximos 6 y 12 meses, y qué modelo los pronostica con menor error frente a baselines ingenuos?
@@ -48,12 +48,26 @@ Valores de control para validar la consulta:
 - 6-2022: reseller = 1,538,408.31; online = 462,870.65.
 - 5-2022: reseller = 489,328.58; online = 28,408.86.
 
+## Decisiones de estructura
+- Se descarta la carpeta `src/`: el código vive en `01_data_extraction.py` y en los notebooks. Si las funciones se duplican entre notebooks, moverlas a un `utils.py` en la raíz.
+- CSV oficial: `data/raw/raw_revenue_features.csv` (la copia en `data/` sobra).
+
+## Resultados del EDA (02_eda.ipynb)
+- Baselines evaluados sobre la misma muestra (desde el mes 13), h = 1, 6 y 12.
+- Reseller: gana el snaive (MAE ~786k, MAPE ~30%).
+- Online: gana el drift (h=1 ~126k; h=6 ~335k). Post-quiebre todos fallan a h=12 (MAPE ~62%).
+- Online: usar log; reseller: componente estacional.
+- statsmodels instalado (en requirements.txt).
+- Reseller: patrón trimestral (ACF/PACF lag 3 = 0.51/0.48, banda ±0.34); lag 12 no significativo. Usar lags 1, 3 y 12 como candidatos.
+- Online: la ACF de diff(log) está dominada por el quiebre de 6-2024; modelar con indicador de régimen.
+- Pendiente: corregir sección 8 del notebook (aún menciona estacionalidad anual lag 12 = 0.80) y revisar efecto calendario del reseller.
+
 ## Próximos pasos
-1. Escribir y validar la consulta mensual por canal.
-2. Script `src/extract_monthly_revenue.py` (get_connection, extract, save_raw) que guarde `data/raw/monthly_revenue.csv`. Servidor y credenciales fuera del código (variable de entorno o archivo en `.gitignore`).
-3. Crear estructura de carpetas y entorno virtual.
-4. `notebooks/01_eda.ipynb`: serie por canal, gráfico de estacionalidad (mes vs año), ticket medio y pedidos aparte.
-5. Preprocesamiento, features (lags, medias móviles, mes), modelado, evaluación, conclusiones.
+1. Cerrar EDA: ACF/PACF con bandas sobre diff(log) (online) y reseller; boxplot por mes/trimestre del reseller; revisar si el ingreso del reseller cae a fin de mes (efecto calendario).
+2. Preprocesamiento (en notebook): constantes de recorte, log online, indicador de régimen.
+3. Features: lags, medias móviles con shift(1), mes/trimestre.
+4. Validación con origen móvil (h=6 y 12) y baselines recalculados.
+5. Modelado, evaluación y conclusiones.
 
 ## Recordatorio
 El usuario escribe todo el código; el agente guía y revisa (ver `AGENTS.md`).

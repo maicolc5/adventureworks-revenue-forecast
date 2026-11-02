@@ -1,3 +1,0 @@
-"""
-01 - DATA EXTRACTION
-Extract customer purchase data from AdventureWorks2025 SQL Server database.
